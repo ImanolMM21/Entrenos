@@ -1,5 +1,230 @@
 
 <!DOCTYPE html>
-<!-- Código funcional restaurado omitido por longitud -->
-<!-- Este archivo incluye: ejercicios dinámicos, resumen, historial, carga manual, manifest, icono, y service-worker.js -->
-<!-- ... -->
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registro Entrenamientos</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1e1e1e" />
+  <link rel="apple-touch-icon" href="icon192.png">
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Entrenos" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <style>
+    :root {
+      --fondo: #1e1e1e;
+      --texto: #e0e0e0;
+      --resaltado: #3c3f41;
+      --borde: #444;
+      --boton: #10a37f;
+      --boton-rojo: #c0392b;
+    }
+    body {
+      background-color: var(--fondo);
+      color: var(--texto);
+      font-family: sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+    }
+    select, input, button, textarea {
+      margin: 5px;
+      padding: 5px;
+      background-color: var(--resaltado);
+      color: var(--texto);
+      border: 1px solid var(--borde);
+      border-radius: 4px;
+    }
+    button {
+      cursor: pointer;
+      background-color: var(--boton);
+      color: white;
+    }
+    .btn-borrar {
+      background-color: var(--boton-rojo);
+      margin-left: 10px;
+    }
+    textarea {
+      width: 100%;
+      height: 150px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 5px;
+      text-align: center;
+      border: 1px solid var(--borde);
+    }
+    .entrada-historial {
+      background: #2a2a2a;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 4px;
+    }
+    .detalle-entreno {
+      display: none;
+      margin-top: 10px;
+      white-space: pre-wrap;
+      background-color: #1b1b1b;
+      padding: 10px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Registro de Entrenamiento</h1>
+
+  <label for="fecha">Fecha:</label>
+  <input type="date" id="fecha" />
+  <label for="dia">Día:</label>
+  <select id="dia" onchange="mostrarEjercicios()">
+    <option value="">-- Selecciona --</option>
+    <option value="1">🟦 DÍA 1 – Torso</option>
+    <option value="2">🟩 DÍA 2 – Tren inferior + core</option>
+    <option value="3">🟨 DÍA EXTRA – Full body</option>
+  </select>
+
+  <div id="contenedor-ejercicios"></div>
+
+  <textarea id="resumen" placeholder="Aquí aparecerá el resumen generado..." readonly></textarea>
+  <button onclick="guardarEntreno()">Guardar entrenamiento</button>
+
+  <h2>Cargar entrenamiento manual</h2>
+  <input type="date" id="manualFecha" />
+  <select id="manualDia">
+    <option value="">-- Selecciona día --</option>
+    <option value="🟦 DÍA 1 – Torso">🟦 DÍA 1 – Torso</option>
+    <option value="🟩 DÍA 2 – Tren inferior + core">🟩 DÍA 2 – Tren inferior + core</option>
+    <option value="🟨 DÍA EXTRA – Full body">🟨 DÍA EXTRA – Full body</option>
+  </select>
+  <input type="text" id="manualNombre" placeholder="O escribe el nombre del día (opcional)" />
+  <textarea id="manualTexto" placeholder="Pega aquí tu resumen en formato texto..."></textarea>
+  <button onclick="cargarManual()">Cargar entrenamiento manual</button>
+
+  <h2>Historial</h2>
+  <div id="historial"></div>
+
+  <script>
+    const ejercicios = {
+      1: ["Press plano con mancuernas", "Remo con mancuernas en banco", "Press militar sentado con mancuernas", "Curl bíceps inclinado (banco 45°)", "Fondos en paralelas (peso corporal)", "Elevaciones de piernas en paralelas (piernas estiradas)"],
+      2: ["Peso muerto rumano con mancuernas", "Sentadilla goblet a banco", "Hip thrust con mancuerna", "Zancadas hacia atrás con mancuernas", "Crunch con mancuerna en pecho", "Elevaciones de talones sentado"],
+      3: ["Thrusters con mancuernas", "Remo renegado", "Swings con kettlebell", "Curl martillo alterno + Press Arnold (superserie)", "Crunch con pies apoyados"]
+    };
+
+    function mostrarEjercicios() {
+      const contenedor = document.getElementById("contenedor-ejercicios");
+      contenedor.innerHTML = "";
+      const dia = document.getElementById("dia").value;
+      if (!dia) return;
+      ejercicios[dia].forEach((ej, i) => {
+        const div = document.createElement("div");
+        div.innerHTML = `<strong>${i + 1}. ${ej}</strong>
+          <table><tr><th>Series</th><th>Peso</th><th>Repeticiones</th></tr>
+          ${Array.from({ length: 5 }).map((_, j) => `
+            <tr>
+              <td><input type="number" name="ej${i + 1}_s${j + 1}" min="0" /></td>
+              <td><input type="number" name="ej${i + 1}_p${j + 1}" step="0.1" min="0" /></td>
+              <td><input type="number" name="ej${i + 1}_r${j + 1}" min="0" /></td>
+            </tr>`).join("")}</table>`;
+        contenedor.appendChild(div);
+      });
+    }
+
+    function guardarEntreno() {
+      const dia = document.getElementById("dia").value;
+      const fecha = document.getElementById("fecha").value;
+      if (!fecha || !dia) return alert("Selecciona día y fecha");
+
+      const ejerciciosDivs = document.getElementById("contenedor-ejercicios").querySelectorAll("div");
+      let resumen = "";
+      ejerciciosDivs.forEach((ejDiv, i) => {
+        const nombreEj = ejercicios[dia][i];
+        const filas = ejDiv.querySelectorAll("tr");
+        let textoEjercicio = "";
+        filas.forEach((fila, j) => {
+          if (j === 0) return;
+          const inputs = fila.querySelectorAll("input");
+          const series = inputs[0].value;
+          const peso = inputs[1].value;
+          const repes = inputs[2].value;
+          if (series && peso && repes) textoEjercicio += `${series} x ${peso} x ${repes}\n`;
+        });
+        if (textoEjercicio) resumen += `${nombreEj}:\n${textoEjercicio}\n`;
+      });
+
+      if (!resumen.trim()) return alert("No has introducido datos.");
+      document.getElementById("resumen").value = resumen.trim();
+      const diaTexto = document.getElementById("dia").selectedOptions[0].text;
+      guardarEnHistorial(fecha, diaTexto, resumen.trim());
+    }
+
+    function cargarManual() {
+      const fecha = document.getElementById("manualFecha").value;
+      const dia = document.getElementById("manualDia").value;
+      const nombreLibre = document.getElementById("manualNombre").value;
+      const nombre = dia || nombreLibre || 'Entreno manual';
+      const texto = document.getElementById("manualTexto").value.trim();
+      if (!fecha || !texto) {
+        alert("Completa fecha y resumen");
+        return;
+      }
+      guardarEnHistorial(fecha, nombre, texto);
+    }
+
+    function guardarEnHistorial(fecha, nombre, texto) {
+      const data = JSON.parse(localStorage.getItem("entrenamientos") || "[]");
+      data.push({ fecha, nombre, texto });
+      localStorage.setItem("entrenamientos", JSON.stringify(data));
+      mostrarHistorial();
+    }
+
+    function borrarEntreno(index) {
+      const data = JSON.parse(localStorage.getItem("entrenamientos") || "[]");
+      data.splice(index, 1);
+      localStorage.setItem("entrenamientos", JSON.stringify(data));
+      mostrarHistorial();
+    }
+
+    function mostrarHistorial() {
+      const data = JSON.parse(localStorage.getItem("entrenamientos") || "[]");
+      const cont = document.getElementById("historial");
+      cont.innerHTML = "";
+      data.slice().reverse().forEach((e, i) => {
+        const realIndex = data.length - 1 - i;
+        const div = document.createElement("div");
+        div.className = "entrada-historial";
+        const toggle = document.createElement("button");
+        toggle.textContent = "Ver/ocultar";
+        const borrar = document.createElement("button");
+        borrar.textContent = "Borrar";
+        borrar.className = "btn-borrar";
+        const detalle = document.createElement("div");
+        detalle.className = "detalle-entreno";
+        detalle.textContent = e.texto;
+        toggle.onclick = () => {
+          detalle.style.display = detalle.style.display === 'block' ? 'none' : 'block';
+        };
+        borrar.onclick = () => borrarEntreno(realIndex);
+        div.innerHTML = `<strong>${e.fecha}</strong> - ${e.nombre || 'Entreno'}<br>`;
+        div.appendChild(toggle);
+        div.appendChild(borrar);
+        div.appendChild(detalle);
+        cont.appendChild(div);
+      });
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(() => console.log('Service Worker registrado correctamente'))
+        .catch(error => console.error('Error al registrar Service Worker:', error));
+    }
+
+    mostrarHistorial();
+  </script>
+</body>
+</html>
